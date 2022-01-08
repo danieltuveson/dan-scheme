@@ -1,0 +1,2 @@
+#!/bin/bash
+racket -I r5rs -f "import.scm" -i
