@@ -1,18 +1,17 @@
 #ifndef SEXPRESSION_FILE
 #define SEXPRESSION_FILE
 
-#include <stdio.h>
 #include <stdbool.h>
-#include <string.h>
-#include <stdlib.h>
-#include <assert.h>
-#include "utils.h"
 
 #define BUFF_SIZE 1000
 #define TAB_SIZE 4
 
 union LispValue
 {
+    bool boolean;
+    char *symbol;
+    char character;
+    union LispValue **vect;
     int num;
     char *string;
     char *atom;
@@ -21,11 +20,24 @@ union LispValue
 
 enum LispType
 {
+    BOOLEAN,
+    SYMBOL,
+    CHAR,
+    VECTOR,
+    PROCEDURE,
+    // PAIR,
     NUM,
     STRING,
-    ATOM,
-    SEXPRESSION,
+    PORT,
+    ATOM, // Should get rid of this in the future?
+    SEXPRESSION, // Should get rid of this in the future? Actually I think this counts as a pair, maybe rename it?
     NIL
+};
+
+struct LispVariable
+{
+    enum LispType lt;
+    union LispValue lv;
 };
 
 struct SExpression 
@@ -35,11 +47,19 @@ struct SExpression
     struct SExpression *cdr;
 };
 
+struct LispProcedure
+{
+    struct SExpression *args;
+    struct SExpression *proc;
+};
+
+struct LispVariable *newLispVariable(union LispValue *lv, enum LispType lt);
 struct SExpression *newSExp(union LispValue car, enum LispType t);
 struct SExpression *append(struct SExpression *sexp, union LispValue lv, enum LispType t);
 struct SExpression *concat(struct SExpression *sexp0, struct SExpression *sexp1);
 void pad(int numspaces);
-void print_sexp(struct SExpression *sexp, int numspaces);
+void print_lisp_value(union LispValue lv, enum LispType lt);
+void print_sexp(struct SExpression *sexp, int indent);
 void delete_sexpression(struct SExpression *sexp);
 
 

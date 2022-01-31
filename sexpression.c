@@ -1,5 +1,18 @@
 /* File contains functions for working with S-expressions and lisp types */
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
+#include "utils.h"
 #include "sexpression.h"
+
+struct LispVariable *newLispVariable(union LispValue *lv, enum LispType lt)
+{
+    struct LispVariable *lvar = malloc(sizeof(lvar));
+    lvar->lv = *lv;
+    lvar->lt = lt;
+    return lvar;
+}
 
 struct SExpression *newSExp(union LispValue car, enum LispType t)
 {
@@ -11,6 +24,24 @@ struct SExpression *newSExp(union LispValue car, enum LispType t)
     switch (t)
     {
         // TODO handle non-atom cases
+        case BOOLEAN:
+            break;
+        case SYMBOL:
+            break;
+        case CHAR:
+            break;
+        case VECTOR:
+            break;
+        case PROCEDURE:
+            break;
+        case NUM:
+            sexp->car.num = car.num;
+            sexp->type = NUM;
+            break;
+        case STRING:
+            break;
+        case PORT:
+            break;
         case ATOM:
             sexp->car.atom = malloc(sizeof(char) * strlen(car.atom));
             if (sexp->car.atom == NULL)
@@ -23,10 +54,6 @@ struct SExpression *newSExp(union LispValue car, enum LispType t)
                 strcpy(sexp->car.atom, car.atom);
                 sexp->type = ATOM;
             }
-            break;
-        case NUM:
-            break;
-        case STRING:
             break;
         case SEXPRESSION:
             // TODO
@@ -72,38 +99,90 @@ void pad(int numspaces)
         putchar(' ');
 }
 
-void print_sexp(struct SExpression *sexp, int numspaces)
+void print_lisp_value(union LispValue lv, enum LispType lt)
 {
-    int indent = TAB_SIZE + numspaces;
-    pad(numspaces);
-    println("{");
+    switch (lt)
+    {
+        // TODO handle non-atom cases
+        case BOOLEAN:
+            break;
+        case SYMBOL:
+            break;
+        case CHAR:
+            break;
+        case VECTOR:
+            break;
+        case PROCEDURE:
+            break;
+        case NUM:
+            printf("%d", lv.num);
+            break;
+        case STRING:
+            break;
+        case PORT:
+            break;
+        case ATOM:
+            printf("%s", lv.atom);
+            break;
+        case SEXPRESSION:
+            printf("(");
+            print_lisp_value(lv.sexp->cdr->car, lv.sexp->cdr->type);
+            printf("...)");
+            break;
+        case NIL:
+            break;
+    }
+}
+
+void print_sexp(struct SExpression *sexp, int indent)
+{
     while (sexp != NULL)
     {
-        // println("okay come on");
-        // printf("'%p'\n", sexp);
         switch (sexp->type)
         {
             // TODO handle non-atom cases
-            case ATOM:
-                pad(indent);
-                printf("content: '%s'\n", sexp->car.atom);
-                pad(indent);
-                printf("type: atom\n");
+            case BOOLEAN:
+                break;
+            case SYMBOL:
+                break;
+            case CHAR:
+                break;
+            case VECTOR:
+                break;
+            case PROCEDURE:
                 break;
             case NUM:
+                pad(indent);
+                printf("type: number\n");
+                pad(indent);
+                printf("content: '%d'\n", sexp->car.num);
                 break;
             case STRING:
                 break;
+            case PORT:
+                break;
+            case ATOM:
+                pad(indent);
+                printf("type: atom\n");
+                pad(indent);
+                printf("content: '%s'\n", sexp->car.atom);
+                break;
             case SEXPRESSION:
-                print_sexp(sexp->car.sexp, indent);
+                pad(indent);
+                printf("type: s-expression\n");
+                pad(indent);
+                printf("content:\n");
+                pad(indent);
+                println("{");
+                print_sexp(sexp->car.sexp, TAB_SIZE + indent);
+                pad(indent);
+                println("}");
                 break;
             case NIL:
                 break;
         }
         sexp = sexp->cdr;
     }
-    pad(numspaces);
-    println("}");
 }
 
 
@@ -115,17 +194,32 @@ void delete_sexpression(struct SExpression *sexp)
     switch (sexp->type)
     {
         // TODO handle non-atom cases
-        case ATOM:
-            free(sexp->car.atom);
-            free(sexp);
+        case BOOLEAN:
+            break;
+        case SYMBOL:
+            break;
+        case CHAR:
+            break;
+        case VECTOR:
+            break;
+        case PROCEDURE:
             break;
         case NUM:
             break;
         case STRING:
             break;
+        case PORT:
+            break;
+        case ATOM:
+            free(sexp->car.atom);
+            free(sexp);
+            break;
         case SEXPRESSION:
+            delete_sexpression(sexp->car.sexp);
+            free(sexp);
             break;
         case NIL:
             break;
     }
 }
+

@@ -1,6 +1,14 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <ctype.h>
 #include "parser.h"
+#include "utils.h"
+#include "interpreter.h"
 
-// TODO deal with leading whitespace before first element
+// TODO deal with leading whitespace before first paren
 struct SExpression *parse_sexpression(char buffer[BUFF_SIZE], int *start_index)
 {
     char current_word[BUFF_SIZE];
@@ -12,8 +20,8 @@ struct SExpression *parse_sexpression(char buffer[BUFF_SIZE], int *start_index)
         return NULL;
     }
 
-    struct SExpression *sexp = NULL;
     union LispValue lv;
+    struct SExpression *sexp = NULL;
     prevc = c;
     start_token = *start_index + 1;
     memset(current_word, '\0', BUFF_SIZE);
@@ -28,6 +36,12 @@ struct SExpression *parse_sexpression(char buffer[BUFF_SIZE], int *start_index)
         // printf("current word: '%s'\n", current_word);
         if (c == '(')
         {
+//             // first element of list must be an atom
+//             if (i == *start_index + 1) 
+//             {
+//                 println("Parse error: first element of s-expression must be an atom");
+//                 return NULL;
+//             }
             int old_start = *start_index;
             *start_index = i;
             struct SExpression *sub_sexp = parse_sexpression(buffer, start_index);
@@ -39,32 +53,28 @@ struct SExpression *parse_sexpression(char buffer[BUFF_SIZE], int *start_index)
             // treat s-expression like a space character
             c = ' ';
         }
-        if (c == '\0' || c == ')') 
+        if (c == '\0' || (c == ')'))
         {
             break;
         }
-        else if (prevc != ' ' && c == ' ')
+        else if ((!isspace(prevc)) && isspace(c))
         {
             if (current_word[0] != '\0') 
             {
-                lv.atom = malloc(sizeof(char) * BUFF_SIZE);
-                strcpy(lv.atom, current_word);
-                sexp = append(sexp, lv, ATOM);
-                free(lv.atom);
+                sexp = parse_word(sexp, current_word);
                 memset(current_word, '\0', BUFF_SIZE);
             }
         }
-        else if (prevc == ' ' && c != ' ')
+        else if (isspace(prevc) && (!isspace(c)))
         {
             start_token = i;
             current_word[i-start_token] = buffer[i];
         }
-        else if (prevc != ' ' && c != ' ')
+        else if ((!isspace(prevc)) && (!isspace(c)))
         {
             current_word[i-start_token] = buffer[i];
         }
         prevc = c;
-        // print_sexp(sexp, 0);
     }
     if (c != ')') 
     {
@@ -74,35 +84,57 @@ struct SExpression *parse_sexpression(char buffer[BUFF_SIZE], int *start_index)
     }
     if (current_word[0] != '\0') 
     {
-        lv.atom = malloc(sizeof(char) * BUFF_SIZE);
-        strcpy(lv.atom, current_word);
-        sexp = append(sexp, lv, ATOM);
-        free(lv.atom);
+        sexp = parse_word(sexp, current_word);
     }
     *start_index = i;
     return sexp;
 }
 
-void enter_cli(void)
+// checks if number is actually zero when zero is returned from atoi
+int is_zero(char *str)
 {
-    while (true)
+    if (str[0] != '0')
+        return false;
+    for (int i = 1; str[i] != '\0'; i++)
     {
-        printf("> ");
-        // Read input
-        char new_buff[BUFF_SIZE];
-        //char test_command[] = "(thing (and another) thing)";
-        memset(new_buff, '\0', BUFF_SIZE);
-        //strcpy(new_buff, test_command);
-        // println(new_buff);
-        fgets(new_buff, BUFF_SIZE, stdin);
-
-        struct SExpression *sexp, *head;
-        int start = 0;
-        sexp = parse_sexpression(new_buff, &start);
-        head = sexp;
-
-        // print contents of sexpression from input
-        print_sexp(sexp, 0);
+        if (str[i] == '\0')
+            return true;
+        else if (str[i] != '0')
+            continue;
+        else
+            return false;
     }
+    return false;
+}
+
+// Parses word and returns word appened to end of sexp 
+struct SExpression *parse_word(struct SExpression *sexp, char *word)
+{
+    union LispValue lv;
+    int num = atoi(word);
+    bool is_number = (num != 0) || is_zero(word);
+
+    // if (word[0] == '"')
+    // {
+    //     // printf("string!\n");
+    // }
+    // else 
+    if (is_number)
+    {
+        lv.num = num;
+        sexp = append(sexp, lv, NUM);
+    }
+    else
+    {
+        lv.atom = malloc(sizeof(char) * BUFF_SIZE);
+        strcpy(lv.atom, word);
+        sexp = append(sexp, lv, ATOM);
+        free(lv.atom);
+        // printf("atom!!\n");
+    }
+
+    // printf("word: %s\n", word);
+
+    return sexp;
 }
 
