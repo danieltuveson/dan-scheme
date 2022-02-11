@@ -16,6 +16,7 @@ union LispValue
     char *string;
     char *atom;
     struct SExpression *sexp;
+    struct LispProcedure *proc;
 };
 
 enum LispType
@@ -49,7 +50,7 @@ struct SExpression
 
 struct LispProcedure
 {
-    struct SExpression *args;
+    char **args;
     struct SExpression *proc;
 };
 

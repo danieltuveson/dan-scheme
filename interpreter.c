@@ -3,25 +3,25 @@
 #include <string.h>
 #include "interpreter.h"
 
-struct Definition **new_scope(
+#define MAX_FUNCTION_ARGS 100
 
-struct LispVariable *lookupDefinition(struct Definition **definitions, char *name)
+struct LispVariable *lookupDefinition(struct Scope *scope, char *name)
 {
+    if (scope == NULL)
+        return NULL;
+    else if (scope->inner_defs == NULL)
+        return lookupDefinition(scope->outer_defs, name);
+
     struct Definition *def;
-    for (int i = 0; i < MAX_LEVEL_DEFINES; i++)
+    for (int i = 0; scope->inner_defs[i] != NULL; i++)
     {
-        def = definitions[i];
-        if (def == NULL)
-        {
-            break;
-        }
-        else if (strcmp(name, def->name) == 0)
+        def = scope->inner_defs[i];
+        if (strcmp(name, def->name) == 0)
         {
             return def->lvar;
         }
-
     }
-    return NULL;
+    return lookupDefinition(scope->outer_defs, name);
 }
 
 struct LispVariable *define(struct Definition **top_level_defs, char *name, struct SExpression *sexp)
@@ -31,7 +31,7 @@ struct LispVariable *define(struct Definition **top_level_defs, char *name, stru
         if ((top_level_defs[i] == NULL) 
                 || (strcmp(name, top_level_defs[i]->name) == 0))
         {
-            struct LispVariable *lvar = eval(top_level_defs, sexp);
+            struct LispVariable *lvar = eval_top_level(top_level_defs, sexp);
             struct Definition *def = malloc(sizeof(*def));
             def->name = name;
             def->lvar = lvar; 
@@ -74,20 +74,27 @@ struct LispVariable *eval_top_level(struct Definition **top_level_defs, struct S
             }
         }
     }
-    return eval(top_level_defs, sexp);
+    struct Scope *scope = malloc(sizeof(*scope));
+    scope->inner_defs = top_level_defs;
+    scope->outer_defs = NULL;
+    return eval(scope, sexp);
 }
 
-struct LispVariable *eval_procedure(struct Definition **top_level_defs, char *name, struct SExpression *sexp)
+void del_atom_array(char **args, int i);
+struct LispVariable *def_lambda(struct Scope *scope, char *name, struct SExpression *sargs, struct SExpression *body);
+
+struct LispVariable *eval_procedure(struct Scope *scope, char *name, struct SExpression *sexp)
 {
+    struct LispVariable *lvar;
     if (strcmp(name, "+") == 0)
     {
         int sum = 0;
-        struct LispVariable *lvar = addition(top_level_defs, sexp, &sum);
+        struct LispVariable *lvar = addition(scope, sexp, &sum);
         if (lvar == NULL)
         {
             union LispValue *lv = malloc(sizeof(lv));
             lv->num = sum;
-            struct LispVariable *lvar = newLispVariable(lv, NUM);
+            lvar = newLispVariable(lv, NUM);
             return lvar;
         }
         else
@@ -100,10 +107,12 @@ struct LispVariable *eval_procedure(struct Definition **top_level_defs, char *na
     }
     else if (strcmp(name, "lambda") == 0)
     {
-        if ((sexp != NULL) )
+        if ((sexp != NULL))
         {
-            if ((sexp->type == SEXPRESSION) && (sexp->cdr != NULL))
+            if ((sexp->type == SEXPRESSION) && (sexp->cdr != NULL) &&
+                (sexp->cdr->type == SEXPRESSION) && (sexp->cdr->car.sexp != NULL))
             {
+                return def_lambda(scope, name, sexp->car.sexp, sexp->cdr);
             }
             // TODO: Define other versions of lambda argument / body
             else
@@ -118,6 +127,16 @@ struct LispVariable *eval_procedure(struct Definition **top_level_defs, char *na
             return NULL;
         }
     }
+    else if ((lvar = lookupDefinition(scope, name)) && lvar->lt == PROCEDURE)
+    {
+        // YOU WERE WORKING ON THIS: NEED TO SUB ARGS INTO FUNCTION BODY
+        printf("calling procedure...\n");
+        struct Definition **defs = calloc(MAX_LEVEL_DEFINES, sizeof(*defs));
+        for (int i = 0; i < MAX_FUNCTION_ARGS; i++)
+        {
+        }
+        return NULL;
+    }
     else 
     {
         printf("Error: procedure '%s' not defined\n", name);
@@ -125,7 +144,44 @@ struct LispVariable *eval_procedure(struct Definition **top_level_defs, char *na
     }
 }
 
-struct LispVariable *eval(struct Definition **top_level_defs, struct SExpression *sexp)
+struct LispVariable *def_lambda(struct Scope *scope, char *name, struct SExpression *sargs, struct SExpression *body)
+{
+    int i;
+    struct SExpression *arg;
+    char **args = calloc(MAX_FUNCTION_ARGS, sizeof(**args));
+    for (i = 0, arg = sargs; i < MAX_FUNCTION_ARGS && arg != NULL && arg->type == ATOM; i++, arg = arg->cdr)
+    {
+        args[i] = calloc(BUFF_SIZE, sizeof(*(args[i])));
+        strcpy(args[i], sargs->car.atom);
+    }
+    if (i == MAX_FUNCTION_ARGS - 1)
+    {
+        printf("Error: function has more arguments than max of '%d'\n", MAX_FUNCTION_ARGS);
+        del_atom_array(args, i);
+        return NULL;
+    }
+    else if (sargs->type != ATOM)
+    {
+        printf("Error: Non-symbol argument given as parameter for lambda\n");
+        del_atom_array(args, i);
+        return NULL;
+    }
+    struct LispProcedure *lproc = malloc(sizeof(*lproc));
+    lproc->args = args;
+    lproc->proc = body->car.sexp;
+    union LispValue *lv = malloc(sizeof(*lv));
+    lv->proc = lproc;
+    return newLispVariable(lv, PROCEDURE);
+}
+
+void del_atom_array(char **args, int i)
+{
+    for (;i != 0; i--) 
+        free(args[i]);
+    free(args);
+}
+
+struct LispVariable *eval(struct Scope *scope, struct SExpression *sexp)
 {
     switch (sexp->type)
     {
@@ -141,7 +197,7 @@ struct LispVariable *eval(struct Definition **top_level_defs, struct SExpression
                     }
                     else
                     {
-                        return eval_procedure(top_level_defs, subexp->car.atom, subexp->cdr);
+                        return eval_procedure(scope, subexp->car.atom, subexp->cdr);
                     }
                 }
                 break;
@@ -167,7 +223,7 @@ struct LispVariable *eval(struct Definition **top_level_defs, struct SExpression
             break;
         case ATOM:
             {
-                struct LispVariable *lvar = lookupDefinition(top_level_defs, sexp->car.atom);
+                struct LispVariable *lvar = lookupDefinition(scope, sexp->car.atom);
                 return lvar;
             }
         case NIL:
@@ -177,7 +233,7 @@ struct LispVariable *eval(struct Definition **top_level_defs, struct SExpression
 }
 
 // If success, returns null. Otherwise it returns the bad lisp value
-struct LispVariable *addition(struct Definition **definitions, struct SExpression *sexp, int *init_val)
+struct LispVariable *addition(struct Scope *scope, struct SExpression *sexp, int *init_val)
 {
     if (sexp == NULL)
         return NULL;
@@ -185,15 +241,15 @@ struct LispVariable *addition(struct Definition **definitions, struct SExpressio
     if (sexp->type == NUM)
     {
         *init_val = *init_val + sexp->car.num;
-        return addition(definitions, sexp->cdr, init_val);
+        return addition(scope, sexp->cdr, init_val);
     }
     else if ((sexp->type == SEXPRESSION) || (sexp->type == ATOM))
     {
-        struct LispVariable *lvar = eval(definitions, sexp);
+        struct LispVariable *lvar = eval(scope, sexp);
         if ((lvar != NULL) && (lvar->lt == NUM))
         {
             *init_val = *init_val + lvar->lv.num;
-            return addition(definitions, sexp->cdr, init_val);
+            return addition(scope, sexp->cdr, init_val);
         }
         else
         {

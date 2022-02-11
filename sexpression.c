@@ -150,6 +150,18 @@ void print_sexp(struct SExpression *sexp, int indent)
             case VECTOR:
                 break;
             case PROCEDURE:
+                pad(indent);
+                printf("type: procedure\n");
+                pad(indent);
+                printf("args:\n");
+                for (char **ptr = sexp->car.proc->args; ptr != NULL; ptr++)
+                {
+                    pad(indent + TAB_SIZE);
+                    printf("- %s\n", *ptr);
+                }
+                pad(indent);
+                printf("body:\n");
+                print_sexp(sexp->car.proc->proc, indent + TAB_SIZE);
                 break;
             case NUM:
                 pad(indent);
