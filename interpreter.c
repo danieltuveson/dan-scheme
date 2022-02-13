@@ -5,6 +5,10 @@
 
 #define MAX_FUNCTION_ARGS 100
 
+void del_atom_array(char **args, int i);
+struct LispVariable *def_lambda(struct Scope *scope, char *name, struct SExpression *sargs, struct SExpression *body);
+struct LispVariable *eval_named_proc(struct Scope *scope, struct LispVariable *lvar, struct SExpression *sexp);
+
 struct LispVariable *lookupDefinition(struct Scope *scope, char *name)
 {
     if (scope == NULL)
@@ -80,8 +84,6 @@ struct LispVariable *eval_top_level(struct Definition **top_level_defs, struct S
     return eval(scope, sexp);
 }
 
-void del_atom_array(char **args, int i);
-struct LispVariable *def_lambda(struct Scope *scope, char *name, struct SExpression *sargs, struct SExpression *body);
 
 struct LispVariable *eval_procedure(struct Scope *scope, char *name, struct SExpression *sexp)
 {
@@ -129,19 +131,54 @@ struct LispVariable *eval_procedure(struct Scope *scope, char *name, struct SExp
     }
     else if ((lvar = lookupDefinition(scope, name)) && lvar->lt == PROCEDURE)
     {
-        // YOU WERE WORKING ON THIS: NEED TO SUB ARGS INTO FUNCTION BODY
-        printf("calling procedure...\n");
-        struct Definition **defs = calloc(MAX_LEVEL_DEFINES, sizeof(*defs));
-        for (int i = 0; i < MAX_FUNCTION_ARGS; i++)
-        {
-        }
-        return NULL;
+        return eval_named_proc(scope, lvar, sexp);
     }
     else 
     {
         printf("Error: procedure '%s' not defined\n", name);
         return NULL;
     }
+}
+
+struct LispVariable *eval_named_proc(struct Scope *scope, struct LispVariable *lvar, struct SExpression *sexp)
+{
+    struct Definition **defs = calloc(MAX_LEVEL_DEFINES, sizeof(**defs));
+    struct SExpression *sarg = sexp;
+    char **args = lvar->lv.proc->args;
+    int i;
+    for (i = 0; i < MAX_FUNCTION_ARGS && args[i] != NULL && sarg != NULL; i++, sarg = sarg->cdr)
+    {
+        defs[i] = malloc(sizeof(struct Definition));
+        defs[i]->name = calloc(BUFF_SIZE, sizeof(defs[i]->name));
+        strcpy(defs[i]->name, args[i]);
+        if (sarg->type == SEXPRESSION || sarg->type == ATOM)
+        {
+            defs[i]->lvar = eval(scope, sarg);
+        }
+        else
+        {
+            defs[i]->lvar = newLispVariable(&sarg->car, sarg->type);
+        }
+    }
+    if (i == MAX_FUNCTION_ARGS - 1 && args[i] != NULL)
+    {
+        printf("Error: maximum number of arguments for function exceeded\n");
+        return NULL;
+    }
+    else if ((args[i] == NULL) && (sarg != NULL))
+    {
+        printf("Error: too many arguments given\n");
+        return NULL;
+    }
+    else if ((args[i] != NULL) && (sarg == NULL))
+    {
+        printf("Error: not enough arguments given\n");
+        return NULL;
+    }
+    struct Scope *new_scope = malloc(sizeof(*new_scope));
+    new_scope->inner_defs = defs;
+    new_scope->outer_defs = scope;
+    return eval_procedure(new_scope, lvar->lv.proc->proc->car.atom, lvar->lv.proc->proc->cdr);
 }
 
 struct LispVariable *def_lambda(struct Scope *scope, char *name, struct SExpression *sargs, struct SExpression *body)
@@ -152,7 +189,7 @@ struct LispVariable *def_lambda(struct Scope *scope, char *name, struct SExpress
     for (i = 0, arg = sargs; i < MAX_FUNCTION_ARGS && arg != NULL && arg->type == ATOM; i++, arg = arg->cdr)
     {
         args[i] = calloc(BUFF_SIZE, sizeof(*(args[i])));
-        strcpy(args[i], sargs->car.atom);
+        strcpy(args[i], arg->car.atom);
     }
     if (i == MAX_FUNCTION_ARGS - 1)
     {
@@ -211,7 +248,26 @@ struct LispVariable *eval(struct Scope *scope, struct SExpression *sexp)
         case VECTOR:
             break;
         case PROCEDURE:
-            break;
+            {
+                struct SExpression *subexp = sexp->car.sexp;
+                if (subexp->type == ATOM)
+                {
+                    if (strcmp(subexp->car.atom, "define") == 0)
+                    {
+                        printf("Error: can only define values at the top level\n");
+                        return NULL;
+                    }
+                    else
+                    {
+                        return eval_procedure(scope, subexp->car.atom, subexp->cdr);
+                    }
+                }
+                else 
+                {
+                    printf("you are dumb\n");
+                }
+                break;
+            }
         case NUM:
             {
                 struct LispVariable *lvar = newLispVariable(&sexp->car, NUM);

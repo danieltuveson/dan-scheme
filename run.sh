@@ -1,5 +1,5 @@
 #!/bin/bash
 clear
-cc *.c -o main 
+cc -Wall *.c -o main 
 ./main
 rm main

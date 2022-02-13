@@ -27,7 +27,7 @@ void enter_cli(void)
         // print contents of sexpression from input
         if (sexp != NULL)
         {
-            print_sexp(sexp, 0);
+            // print_sexp(sexp, 0);
             struct LispVariable *lvar = eval_top_level(top_level_defs, sexp);
             if (lvar != NULL)
             {
