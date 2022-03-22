@@ -8,6 +8,7 @@
 void del_atom_array(char **args, int i);
 struct LispVariable *def_lambda(struct Scope *scope, char *name, struct SExpression *sargs, struct SExpression *body);
 struct LispVariable *eval_named_proc(struct Scope *scope, struct LispVariable *lvar, struct SExpression *sexp);
+struct LispVariable *create_proc(struct Scope *scope, char *name, struct SExpression *sexp);
 
 struct LispVariable *lookupDefinition(struct Scope *scope, char *name)
 {
@@ -48,40 +49,51 @@ struct LispVariable *define(struct Definition **top_level_defs, char *name, stru
 
 struct LispVariable *eval_top_level(struct Definition **top_level_defs, struct SExpression *sexp)
 {
-    if (sexp->type == SEXPRESSION)
+    struct SExpression *subexp = sexp->car.sexp;
+    if ((subexp->type == ATOM) && (strcmp(subexp->car.atom, "define") == 0))
     {
-        struct SExpression *subexp = sexp->car.sexp;
-        if (subexp->type == ATOM)
+        if (subexp->cdr == NULL) 
         {
-            if (strcmp(subexp->car.atom, "define") == 0)
-            {
-                if ((subexp->cdr != NULL) 
-                        && (subexp->cdr->type == ATOM) 
-                        && (subexp->cdr->cdr != NULL))
-                {
-                    struct LispVariable *lvar = 
-                        define(top_level_defs, subexp->cdr->car.atom, subexp->cdr->cdr);
-                    if (lvar == NULL)
-                        printf("Error: could not define variable\n");
-                    return lvar;
-                }
-                else if ((subexp->cdr == NULL) || (subexp->cdr->cdr != NULL))
-                {
-                    printf("Error: define requires two arguments\n");
-                    return NULL;
-                } 
-                else if (subexp->cdr->type != ATOM)
-                {
-                    printf("Error: first argument of define must be an atom\n");
-                    return NULL;
-                }
-            }
+            printf("Error: define requires two arguments\n");
+            return NULL;
+        } 
+        else if (subexp->cdr->cdr == NULL)
+        {
+            printf("Error: define requires two arguments\n");
+            return NULL;
+        }
+        else if (subexp->cdr->type == ATOM) 
+        {
+            struct LispVariable *lvar = 
+                define(top_level_defs, subexp->cdr->car.atom, subexp->cdr->cdr);
+            if (lvar == NULL)
+                printf("Error: could not define variable\n");
+            return lvar;
+        }
+        else if (subexp->cdr->type == SEXPRESSION)
+        {
+            // TODO allow define for functions
+            printf("Error: error still need to define procedure version of \"definition\"\n");
+            return NULL;
+        }
+        else if (subexp->cdr->type != ATOM)
+        {
+            printf("Error: first argument of define must be an atom or an sexpression\n");
+            return NULL;
+        }
+        else
+        {
+            printf("Error: could not define variable\n");
+            return NULL;
         }
     }
-    struct Scope *scope = malloc(sizeof(*scope));
-    scope->inner_defs = top_level_defs;
-    scope->outer_defs = NULL;
-    return eval(scope, sexp);
+    else
+    {
+        struct Scope *scope = malloc(sizeof(*scope));
+        scope->inner_defs = top_level_defs;
+        scope->outer_defs = NULL;
+        return eval(scope, sexp);
+    }
 }
 
 
@@ -109,23 +121,21 @@ struct LispVariable *eval_procedure(struct Scope *scope, char *name, struct SExp
     }
     else if (strcmp(name, "lambda") == 0)
     {
-        if ((sexp != NULL))
+        return create_proc(scope, name, sexp);
+    }
+    else if (strcmp(name, "if") == 0)
+    {
+        if (sexp != NULL && sexp->type == SEXPRESSION 
+                && sexp->cdr != NULL && sexp->cdr->type == SEXPRESSION 
+                && sexp->cdr->cdr == NULL)
         {
-            if ((sexp->type == SEXPRESSION) && (sexp->cdr != NULL) &&
-                (sexp->cdr->type == SEXPRESSION) && (sexp->cdr->car.sexp != NULL))
-            {
-                return def_lambda(scope, name, sexp->car.sexp, sexp->cdr);
-            }
-            // TODO: Define other versions of lambda argument / body
-            else
-            {
-                printf("Error: ill-formatted lambda expression\n");
-                return NULL;
-            }
+            // struct LispVariable *lvar = eval(scope, sexp);
+            // TODO: Handle boolean (probably have to create boolean type first)
+            // if (lvar)
+            return NULL;
         }
         else
         {
-            printf("Error: lambda a list of arguments and a procedure\n");
             return NULL;
         }
     }
@@ -136,6 +146,29 @@ struct LispVariable *eval_procedure(struct Scope *scope, char *name, struct SExp
     else 
     {
         printf("Error: procedure '%s' not defined\n", name);
+        return NULL;
+    }
+}
+
+struct LispVariable *create_proc(struct Scope *scope, char *name, struct SExpression *sexp)
+{
+    if ((sexp != NULL))
+    {
+        if ((sexp->type == SEXPRESSION) && (sexp->cdr != NULL) &&
+            (sexp->cdr->type == SEXPRESSION) && (sexp->cdr->car.sexp != NULL))
+        {
+            return def_lambda(scope, name, sexp->car.sexp, sexp->cdr);
+        }
+        // TODO: Define other versions of lambda argument / body
+        else
+        {
+            printf("Error: ill-formatted function expression\n");
+            return NULL;
+        }
+    }
+    else
+    {
+        printf("Error: function must contain a list of arguments and a procedure\n");
         return NULL;
     }
 }
