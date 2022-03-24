@@ -33,7 +33,7 @@ c_file_name=$lcase_header_name.c
 if [[ -e $c_file_name ]]; then
     echo "A file named $c_file_name already exists, skipping generating $c_file_name"
 else
-    echo "#include \"$c_file_name\"" > $c_file_name
+    echo "#include \"$file_name\"" > $c_file_name
     echo "" >> $c_file_name
 fi
 
