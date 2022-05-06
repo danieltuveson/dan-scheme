@@ -4,6 +4,10 @@
 #include <stdbool.h>
 #include "linked_list.h"
 
+/* Most of the enums and structs in this file are used to represent lexical 
+ * tokens in Scheme.
+ */
+
 #define DELIMITER " \n\t()\";"
 
 typedef enum
@@ -21,12 +25,12 @@ typedef enum
     NEWLINE
 } Whitespace;
 
-typedef char *Comment;
+typedef char Comment;
 
 typedef struct
 {
     Whitespace whitespace;
-    Comment comment;
+    Comment *comment;
 } IntertokenSpace;
 
 typedef enum 
@@ -43,30 +47,40 @@ typedef struct
         CSPACE,
         CNEWLINE
     } type;
-    union
-    {
-        char Char;
-        enum
-        {
-            Space,
-            Newline
-        };
-    } value;
+    char Char;
 } LCharacter;
 
 typedef struct
 {
     enum 
     {
-        SPACE_OR_COMMENT,
-        LBOOLEAN
+        // SPACE_OR_COMMENT,
+        LBOOLEAN,
+        LINT,
+        LCHARACTER
     } type;
     union
     {
         LBoolean lbool;
+        LCharacter lcharacter;
+        int lint;
     } value;
-    LinkedList list;
-} LexerContent;
+} Token;
+
+
+// Linked list containing tokens
+typedef struct Tokens
+{
+    Token *token;
+    struct Tokens *prev;
+    struct Tokens *next;
+
+    // A stack of locations in the input we may want to return to in the future
+    // if we encounter an error in the middle of attempting to lex a token
+    // Bookmark *inputBookmark;
+    unsigned long bookmark;
+
+} Tokens;
 
 /*  Bookmarks should be used to represent the last "good" state of our lexer
  *  If we try to lex multiple things but some fail, want to be able to return 
@@ -82,16 +96,38 @@ typedef struct Bookmark
     struct Bookmark *prevBookmark;
 } Bookmark;
 
+
+// Structure of storing the state of the lexer
 typedef struct 
 {
+    // String input to be lexed
     char *input;
-    // LexerContent content;
+
+    // Content lexed so far
+    Tokens *tokens;
+    
+    // Number of characters lexer has consumed
     unsigned long charsLexed;
+
+    // Strlen of lexer->input (should not be changed)
     unsigned long size;
-    bool hasNext;
-    Bookmark *bookmark;
+
+    // Stores the reason for failure when the lexer fails to successfully parse
+    // a token, the reason for failure
     LexError error; // this gets set if encounters error while lexing
 } Lexer;
+
+// True if more characters left to parse in input
+// False if we have reached the end of the input
+static inline bool hasNext(Lexer *lexer)
+{
+    return (lexer->charsLexed < lexer->size);
+}
+
+static inline char peek(Lexer *lexer)
+{ 
+    return (!hasNext(lexer) ? '\0' : lexer->input[lexer->charsLexed]);
+}
 
 #include "lexer.c.generated.h"
 #endif

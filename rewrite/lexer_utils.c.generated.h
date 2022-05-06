@@ -6,3 +6,8 @@ void matchDelimitedString(Lexer *lexer, char *string);
 void lexBoolean(Lexer *lexer);
 void lexSingleCharacter(Lexer *lexer);
 void lexCharacter(Lexer *lexer);
+int lexSign(Lexer *lexer);
+bool lexDigits(Lexer *lexer);
+void lexNumber(Lexer *lexer);
+void lexSingleToken(Lexer *lexer);
+void lexAllInput(Lexer *lexer);

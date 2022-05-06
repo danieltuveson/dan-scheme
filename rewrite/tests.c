@@ -1,7 +1,5 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 #include <assert.h>
 #include "tests.h"
 #include "lexer.h"
@@ -16,6 +14,7 @@ void tests()
     RUN_TEST(matchString);
     RUN_TEST(lexBool);
     RUN_TEST(lexCharacter);
+    RUN_TEST(lexNumber);
 
     printf("... finished!\n");
 }
@@ -27,9 +26,9 @@ void test_newLexer()
 
     assert(lexer->error == NO_ERROR);
     assert(lexer->charsLexed == 0);
-    assert(lexer->hasNext == true);
-    assert(lexer->bookmark->value == 0);
-    assert(lexer->bookmark->prevBookmark == NULL);
+    assert(hasNext(lexer));
+    assert(lexer->inputBookmark->value == 0);
+    assert(lexer->inputBookmark->prevBookmark == NULL);
     assert(lexer->size == 14);
     assert(strcmp(lexer->input, "hello, world!\n") == 0);
 }
@@ -53,7 +52,7 @@ void test_charLexed()
         assert(c == lexer->input[i]);
     }
     assert(c == '\n');
-    assert(lexer->hasNext == false);
+    assert(!hasNext(lexer));
     assert(lexer->error == NO_ERROR);
     nextChar(lexer);
     assert(lexer->error == UNEXPECTED_END_OF_INPUT);
@@ -72,7 +71,7 @@ void test_matchString()
     matchString(lexer, "hello");
     assert(lexer->error == STRING_MATCH_FAILURE);
     matchString(lexer, ", world!\n");
-    assert(lexer->hasNext == false);
+    assert(!hasNext(lexer));
     assert(lexer->error == NO_ERROR);
 
     nextChar(lexer);
@@ -85,14 +84,20 @@ void test_lexBool()
 {
     Lexer *lexer;
 
-    lexer = newLexer("#f");
+    lexer = newLexer("#f)");
     lexBoolean(lexer);
     assert(lexer->error == NO_ERROR);
+    assert(lexer->token != NULL);
+    assert(lexer->token->type == LBOOLEAN);
+    assert(lexer->token->value.lbool == LFalse);
     deleteLexer(lexer);
 
-    lexer = newLexer("#t");
+    lexer = newLexer("#t(");
     lexBoolean(lexer);
     assert(lexer->error == NO_ERROR);
+    assert(lexer->token != NULL);
+    assert(lexer->token->type == LBOOLEAN);
+    assert(lexer->token->value.lbool == LTrue);
     deleteLexer(lexer);
 
     lexer = newLexer("#g");
@@ -123,4 +128,45 @@ void test_lexCharacter()
     lexer = newLexer("#\\soup");
     lexCharacter(lexer);
     assert(lexer->error == STRING_MATCH_FAILURE);
+}
+
+void test_lexNumber()
+{
+    Lexer *lexer;
+
+    lexer = newLexer("hey");
+    lexNumber(lexer);
+    assert(lexer->error == STRING_MATCH_FAILURE);
+    deleteLexer(lexer);
+
+    lexer = newLexer("10395 ;");
+    lexNumber(lexer);
+    assert(lexer->error == NO_ERROR);
+    assert(lexer->token != NULL);
+    assert(lexer->token->type == LINT);
+    assert(lexer->token->value.lint == 10395);
+    deleteLexer(lexer);
+
+    lexer = newLexer("-10395\n");
+    lexNumber(lexer);
+    assert(lexer->error == NO_ERROR);
+    assert(lexer->token != NULL);
+    assert(lexer->token->type == LINT);
+    assert(lexer->token->value.lint == -10395);
+    deleteLexer(lexer);
+
+    // lexer = newLexer("5/67");
+    // lexNumber(lexer);
+    // assert(lexer->error == NO_ERROR);
+    // deleteLexer(lexer);
+
+    // lexer = newLexer("+5.67e11");
+    // lexNumber(lexer);
+    // assert(lexer->error == NO_ERROR);
+    // deleteLexer(lexer);
+
+    // lexer = newLexer("-5.67###");
+    // lexNumber(lexer);
+    // assert(lexer->error == NO_ERROR);
+    // deleteLexer(lexer);
 }
