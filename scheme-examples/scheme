@@ -1,2 +1,0 @@
-#!/bin/bash
-racket -I r5rs -f "main.scm"

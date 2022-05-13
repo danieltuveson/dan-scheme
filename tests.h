@@ -1,6 +1,7 @@
 #ifndef TESTS
 #define TESTS
 
-void test_stuff();
+#define RUN_TEST(name) printf("... testing %s ...\n", #name); test_ ## name()
 
-#endif 
+#include "tests.c.generated.h"
+#endif

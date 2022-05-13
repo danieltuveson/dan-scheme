@@ -1,9 +1,13 @@
 #include "io.h"
 #include "tests.h"
 
-int main()
+#define RUN_TESTS 1
+int main() 
 {
-    test_stuff();
-    enter_cli();
-}
+#if RUN_TESTS
+    tests();
+#endif 
 
+    mainLoop();
+    return 0;
+}
