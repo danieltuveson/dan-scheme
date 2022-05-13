@@ -1,15 +1,6 @@
 Lexer *newLexer(char *input);
 void deleteLexer(Lexer *lexer);
 void printLexer(Lexer *lexer);
-Token *newBoolToken(LBoolean b);
-// Token *newCharToken(char c);
-Token *newIntToken(int i);
-// Tokens *newTokens(void);
-// Tokens *newBoolean(bool b);
-// void deleteTokens(Tokens *tokens);
-// void deleteNextTokens(Tokens *tokens);
-// void deletePrevTokens(Tokens *tokens);
-void printTokens(Tokens *tokens);
 void setBookmark(Lexer *lexer);
 void unsetBookmark(Lexer *lexer);
 void returnToBookmark(Lexer *lexer);

@@ -20,7 +20,7 @@ Lexer *newLexer(char *input)
     lexer->inputBookmark = malloc(sizeof(Bookmark));
     lexer->inputBookmark->value = 0;
     lexer->inputBookmark->prevBookmark = NULL;
-    lexer->token = NULL;
+    lexer->tokens = NULL;
 
     lexer->input = malloc(stringSize + 1);
     strcpy(lexer->input, input);
@@ -32,7 +32,6 @@ void deleteLexer(Lexer *lexer)
 {
     Bookmark *current, *prev;
     current = lexer->inputBookmark;
-    free(lexer->token);
     while (current != NULL)
     {
         prev = current->prevBookmark;
@@ -60,87 +59,6 @@ void printLexer(Lexer *lexer)
 
     printf("error: %d\n", lexer->error);
 }
-
-Token *newBoolToken(LBoolean b)
-{
-    Token *token = malloc(sizeof(Tokens));
-    token->type = LBOOLEAN;
-    token->value.lbool = b;
-    return token;
-}
-
-// Token *newCharToken(char c)
-// {
-//     Token *token = malloc(sizeof(Tokens));
-//     token->type = LBOOLEAN;
-//     token->value = LBoolean.LTrue;
-// }
-
-Token *newIntToken(int i)
-{
-    Token *token = malloc(sizeof(Tokens));
-    token->type = LINT;
-    token->value.lint = i;
-    return token;
-}
-
-
-// Tokens *newTokens(void)
-// {
-//     Tokens *tokens = malloc(sizeof(Tokens));
-//     tokens->token = NULL;
-//     tokens->prev = NULL;
-//     tokens->next = NULL;
-//     return tokens;
-// }
-// 
-// Tokens *newBoolean(bool b)
-// {
-//     Tokens *tokens = newTokens();
-//     tokens->token->type = LBOOLEAN;
-//     tokens->token->value.lbool = b;
-//     return tokens;
-// }
-// 
-// void deleteTokens(Tokens *tokens)
-// {
-//     if (tokens == NULL)
-//         return;
-//     if (tokens->token != NULL)
-//         free(tokens->token);
-//     deleteNextTokens(tokens->next);
-//     deletePrevTokens(tokens->prev);
-//     free(tokens);
-// }
-// 
-// void deleteNextTokens(Tokens *tokens)
-// {
-//     if (tokens == NULL)
-//         return;
-//     if (tokens->token != NULL)
-//         free(tokens->token);
-//     Tokens *next = tokens->next;
-//     free(tokens);
-//     deleteNextTokens(next);
-// }
-// 
-// void deletePrevTokens(Tokens *tokens)
-// {
-//     if (tokens == NULL)
-//         return;
-//     if (tokens->token != NULL)
-//         free(tokens->token);
-//     Tokens *prev = tokens->prev;
-//     free(tokens);
-//     deletePrevTokens(prev);
-// }
-
-void printTokens(Tokens *tokens)
-{
-    if (tokens == NULL)
-        return;
-}
-
 // Push new value of inputBookmark onto the stack
 void setBookmark(Lexer *lexer)
 {
@@ -186,5 +104,4 @@ char nextChar(Lexer *lexer)
     lexer->charsLexed++;
     return c;
 }
-
 

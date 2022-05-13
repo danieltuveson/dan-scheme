@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include "tests.h"
+#include "tokens.h"
 #include "lexer.h"
 #include "lexer_utils.h"
 
@@ -9,14 +11,44 @@ void tests()
 {
     printf("... running tests ...\n");
 
+    RUN_TEST(tokens);
     RUN_TEST(newLexer);
     RUN_TEST(charLexed);
     RUN_TEST(matchString);
     RUN_TEST(lexBool);
     RUN_TEST(lexCharacter);
     RUN_TEST(lexNumber);
+    RUN_TEST(lexMultipleValues);
 
     printf("... finished!\n");
+}
+
+void test_tokens()
+{
+    Token *token;
+
+    Tokens *tokens = NULL;
+    tokens = push(tokens, newIntToken(55));
+    assert(tokens->token->value.lint == 55);
+
+    tokens = push(tokens, newBoolToken(LTrue));
+    assert(tokens->token->type == LBOOLEAN);
+    assert(tokens->token->value.lbool == LTrue);
+
+    tokens = push(tokens, newIntToken(52));
+
+    Tokens **head = &tokens;
+    token = pop(head);
+    assert(token->type == LINT);
+    assert(token->value.lint == 52);
+
+    token = pop(head);
+    assert(token->type == LBOOLEAN);
+    assert(token->value.lbool == LTrue);
+
+    token = pop(head);
+    assert(token->type == LINT);
+    assert(token->value.lint == 55);
 }
 
 void test_newLexer()
@@ -87,17 +119,17 @@ void test_lexBool()
     lexer = newLexer("#f)");
     lexBoolean(lexer);
     assert(lexer->error == NO_ERROR);
-    assert(lexer->token != NULL);
-    assert(lexer->token->type == LBOOLEAN);
-    assert(lexer->token->value.lbool == LFalse);
+    assert(lexer->tokens->token != NULL);
+    assert(lexer->tokens->token->type == LBOOLEAN);
+    assert(lexer->tokens->token->value.lbool == LFalse);
     deleteLexer(lexer);
 
     lexer = newLexer("#t(");
     lexBoolean(lexer);
     assert(lexer->error == NO_ERROR);
-    assert(lexer->token != NULL);
-    assert(lexer->token->type == LBOOLEAN);
-    assert(lexer->token->value.lbool == LTrue);
+    assert(lexer->tokens->token != NULL);
+    assert(lexer->tokens->token->type == LBOOLEAN);
+    assert(lexer->tokens->token->value.lbool == LTrue);
     deleteLexer(lexer);
 
     lexer = newLexer("#g");
@@ -142,17 +174,17 @@ void test_lexNumber()
     lexer = newLexer("10395 ;");
     lexNumber(lexer);
     assert(lexer->error == NO_ERROR);
-    assert(lexer->token != NULL);
-    assert(lexer->token->type == LINT);
-    assert(lexer->token->value.lint == 10395);
+    assert(lexer->tokens->token != NULL);
+    assert(lexer->tokens->token->type == LINT);
+    assert(lexer->tokens->token->value.lint == 10395);
     deleteLexer(lexer);
 
     lexer = newLexer("-10395\n");
     lexNumber(lexer);
     assert(lexer->error == NO_ERROR);
-    assert(lexer->token != NULL);
-    assert(lexer->token->type == LINT);
-    assert(lexer->token->value.lint == -10395);
+    assert(lexer->tokens->token != NULL);
+    assert(lexer->tokens->token->type == LINT);
+    assert(lexer->tokens->token->value.lint == -10395);
     deleteLexer(lexer);
 
     // lexer = newLexer("5/67");
@@ -169,4 +201,57 @@ void test_lexNumber()
     // lexNumber(lexer);
     // assert(lexer->error == NO_ERROR);
     // deleteLexer(lexer);
+}
+
+void test_lexMultipleValues()
+{
+    Lexer *lexer;
+
+    lexer = newLexer("(#\\space 'wow ?neat-123var+;oh wow a comment\n#f 44)\n");
+    lexAllInput(lexer);
+    Tokens *tokens = lexer->tokens;
+    deleteLexer(lexer);
+
+    Tokens **head = &(tokens);
+    Token *token;
+
+    token = pop(head);
+    assert(token->type == LSIMPLE_TOKEN);
+    assert(token->value.lsimpletoken == LOPEN_PAREN);
+    free(token);
+
+    token = pop(head);
+    assert(token->type == LCHARACTER);
+    assert(token->value.lchar == ' ');
+    free(token);
+
+    token = pop(head);
+    assert(token->type == LSIMPLE_TOKEN);
+    assert(token->value.lsimpletoken == LQUOTE);
+    free(token);
+
+    token = pop(head);
+    assert(token->type == LIDENTIFIER);
+    assert(strcmp(token->value.lidentifier, "wow") == 0);
+    free(token);
+
+    token = pop(head);
+    assert(token->type == LIDENTIFIER);
+    assert(strcmp(token->value.lidentifier, "?neat-123var+") == 0);
+    free(token);
+
+    token = pop(head);
+    assert(token->type == LBOOLEAN);
+    assert(token->value.lbool == LFalse);
+    free(token);
+
+    token = pop(head);
+    assert(token->type == LINT);
+    assert(token->value.lint == 44);
+    free(token);
+
+    token = pop(head);
+    assert(token->type == LSIMPLE_TOKEN);
+    assert(token->value.lsimpletoken == LCLOSE_PAREN);
+    free(token);
 }

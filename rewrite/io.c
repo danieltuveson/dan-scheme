@@ -11,13 +11,27 @@ void mainLoop(void)
         printf("> ");
 
         Lexer *lexer = lexReplInput();
+        printf("======================\n");
+
+        printf("### Lexer Content ###\n");
         printLexer(lexer);
-        if (lexer == NULL)
+        printf("======================\n");
+
+        printf("### Tokens Parsed ###\n");
+        printTokens(lexer->tokens);
+        printf("======================\n");
+
+        if (lexer->error != NO_ERROR)
         {
+            printf("### Error ###\n");
+            printError(lexer->error);
+            printf("======================\n");
+
             fflush(stdin);
-            continue;
+            deleteTokens(lexer->tokens);
+            deleteLexer(lexer);
         }
-        deleteLexer(lexer);
+        printf("\n");
     }
 }
 
